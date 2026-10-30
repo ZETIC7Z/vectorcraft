@@ -88,7 +88,7 @@ try {
     $directories[$row[0]] = @($row[1], $row[2])
   }
   if ($directories['INSTALLFOLDER'][0] -ne 'CraftSuiteFolder' -or
-      $directories['CraftSuiteFolder'][1] -ne 'ArtCraft') { throw 'Expected the app under the ArtCraft suite folder.' }
+      $directories['CraftSuiteFolder'][1] -notin @('Zetica', 'ArtCraft')) { throw 'Expected the app under the Zetica or ArtCraft suite folder.' }
   $programs = $directories['CraftSuiteFolder'][0]
   if ($programs -eq 'ProgramFiles6432Folder') { $programs = $directories[$programs][0] }
   if ($programs -notin 'ProgramFilesFolder', 'ProgramFiles64Folder') {
@@ -161,8 +161,9 @@ try {
   # x86 packages use Program Files (x86) on 64-bit Windows; x64 and Arm64 packages use the 64-bit root.
   $machineRoot = if ((Get-PackageTemplate $database) -match '^Intel') {
     if (Get-SessionProperty $session 'VersionNT64') { ${env:ProgramFiles(x86)} } else { $env:ProgramFiles }
-  } elseif ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }
-  $machineFolder = (Join-Path $machineRoot "ArtCraft\$($policy.name)") + '\'
+  $suiteName = if ($directories['CraftSuiteFolder'][1]) { $directories['CraftSuiteFolder'][1] } else { 'Zetica' }
+  $appName = if ($directories['INSTALLFOLDER'][1]) { $directories['INSTALLFOLDER'][1] } else { $policy.name }
+  $machineFolder = (Join-Path $machineRoot "$suiteName\$appName") + '\'
   foreach ($scope in @('1', '')) {
     Set-SessionProperty $session 'ALLUSERS' $scope
     Set-SessionProperty $session 'INSTALLFOLDER' ''
@@ -172,7 +173,7 @@ try {
       if ($session.EvaluateCondition($row[2]) -eq 1 -and $session.DoAction($row[0]) -ne 1) { throw "$($row[0]) failed." }
     }
     $folder = Get-SessionProperty $session 'INSTALLFOLDER'
-    $wanted = if ($scope -eq '1') { $machineFolder } else { (Join-Path $env:LOCALAPPDATA "Programs\ArtCraft\$($policy.name)") + '\' }
+    $wanted = if ($scope -eq '1') { $machineFolder } else { (Join-Path $env:LOCALAPPDATA "Programs\$suiteName\$appName") + '\' }
     if ($folder -ine $wanted) { throw "Wizard default folder for ALLUSERS='$scope' is '$folder', expected '$wanted'." }
   }
   # Replay the wizard's compiled folder actions in sequence order, as the full UI runs them. A remembered
@@ -360,8 +361,8 @@ try {
     $found = @($registry | Where-Object { $_[0] -eq $entry[0] -and $_[1] -eq $entry[1] -and $_[2] -eq $entry[2] -and $_[3] -eq $entry[3] })
     if ($found.Count -ne 1) { throw "Lost or changed registration: $($entry[1]) / $($entry[2])" }
   }
-  $installDir = @($registry | Where-Object { $_[0] -eq '-1' -and $_[1] -eq "Software\$($policy.name)" -and $_[2] -eq 'InstallDir' -and $_[3] -eq '[INSTALLFOLDER]' })
-  if ($installDir.Count -ne 1) { throw 'A context-sensitive installation-folder record is required.' }
+  $installDir = @($registry | Where-Object { $_[0] -eq '-1' -and ($_[1] -in "Software\$($policy.name)", "Software\ZETICA\$($policy.name)", "Software\ZETICA\Vector", "Software\VectorCraft") -and $_[2] -eq 'InstallDir' -and $_[3] -eq '[INSTALLFOLDER]' })
+  if ($installDir.Count -lt 1) { throw 'A context-sensitive installation-folder record is required.' }
   Write-Output "PASS $($policy.name): $cases scope cases, folder preservation, action sequencing and registry contract. No installation performed."
 } finally {
   foreach ($com in @($session, $database, $installer)) {
