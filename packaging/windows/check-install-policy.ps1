@@ -161,6 +161,7 @@ try {
   # x86 packages use Program Files (x86) on 64-bit Windows; x64 and Arm64 packages use the 64-bit root.
   $machineRoot = if ((Get-PackageTemplate $database) -match '^Intel') {
     if (Get-SessionProperty $session 'VersionNT64') { ${env:ProgramFiles(x86)} } else { $env:ProgramFiles }
+  } elseif ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }
   $suiteName = if ($directories['CraftSuiteFolder'][1]) { $directories['CraftSuiteFolder'][1] } else { 'Zetica' }
   $appName = if ($directories['INSTALLFOLDER'][1]) { $directories['INSTALLFOLDER'][1] } else { $policy.name }
   $machineFolder = (Join-Path $machineRoot "$suiteName\$appName") + '\'
@@ -369,3 +370,4 @@ try {
     if ($null -ne $com) { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($com) }
   }
 }
+
