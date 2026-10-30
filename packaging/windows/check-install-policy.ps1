@@ -181,7 +181,7 @@ try {
   # folder must win over the new-install default, and a folder the user typed must survive both.
   $uiFolderActions = @(Read-Rows $database 'SELECT `Action`, `Sequence`, `Condition` FROM `InstallUISequence`' 3 |
     Where-Object { $_[0] -match '^Craft(Restore|Default)' } | Sort-Object { [int]$_[1] })
-  $userDefault = (Join-Path $env:LOCALAPPDATA "Programs\ArtCraft\$($policy.name)") + '\'
+  $userDefault = (Join-Path $env:LOCALAPPDATA "Programs\$suiteName\$appName") + '\'
   foreach ($case in @(
       @('1', 'D:\Remembered user app', 'E:\Remembered machine app', '', 'E:\Remembered machine app'),
       @('', 'D:\Remembered user app', 'E:\Remembered machine app', '', 'D:\Remembered user app'),
